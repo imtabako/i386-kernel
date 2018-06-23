@@ -114,6 +114,15 @@ get_cr3:
 	ret
 .size get_cr3, . - get_cr3
 
+.global	upd_cr3
+.type	upd_cr3, @function
+upd_cr3:
+	mov	%cr3, %eax
+	mov	%eax, %cr3
+
+	ret
+.size	upd_cr3, . - upd_cr3
+
 .global	load_gdt
 .type	load_gdt, @function
 load_gdt:

@@ -27,5 +27,11 @@ cmain(size_t magic, unsigned char *mbinfo)
 		KERNEL_BASE, &_ekern, magic, mbinfo);
 
 	kprintf("free page at 0x%08X!\n\n", pg_find());
+
+	/* TEST */
+	pg_map(pg_find(), 0x2A0000, PG_PRES | PG_RW);
+	pg_map(pg_find(), 0x2B0000, PG_PRES | PG_RW);
+	pg_map(pg_find(), 0x2C0000, PG_PRES | PG_RW);
+	/* !TEST */
 }
 

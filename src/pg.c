@@ -5,19 +5,51 @@
 
 
 extern paddr_t get_cr3();
+extern void upd_cr3();
 
 extern char pg_directory;
 extern char _ekern;
 
-paddr_t *pg_dir;
-vaddr_t  _prev;		/* No idea how to name it */
+paddr_t *pg_dir = (unsigned long *)&pg_directory;
+vaddr_t  _prev = (vaddr_t)&_ekern;	
 
 
 void
 pg_init()
 {
+	return;
+#if 0
 	pg_dir = (unsigned long *)&pg_directory;
 	_prev = (vaddr_t)&_ekern;
+#endif
+}
+
+vaddr_t
+pg_alloc()
+{
+	if (pg_find() == 0)
+
+	return 0;
+}
+
+void
+pg_map(vaddr_t src, paddr_t dst, unsigned long flags)
+{
+	vaddr_t *page;
+	unsigned long ind, tmp;
+
+	if (src >> 22 == 0x3FF)
+		ind = 1022;
+	else
+		ind = 1023;
+
+	tmp = pg_dir[ind];
+	pg_dir[ind] = get_cr3() | PG_PRES | PG_RW;
+
+	page = (vaddr_t *)((ind << 22) | src >> 10);
+	*page = dst | flags;
+
+	pg_dir[ind] = tmp;
 }
 
 vaddr_t
@@ -57,10 +89,8 @@ pg_find()
 
 end:
 	pg_dir[1023] = tmp;
-	if (addr) {
-		_prev = res + 0x1000;
+	if (addr)
 		return res;
-	}
 
 	/*
 	 * In case a free page isn't found we have one more
@@ -80,7 +110,6 @@ end:
 	}
 
 	pg_dir[1022] = tmp;
-	_prev = res + 0x1000;
 	return res;
 }
 

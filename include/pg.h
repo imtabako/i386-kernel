@@ -12,6 +12,10 @@ typedef uint32_t vaddr_t;
 
 void pg_init();
 
+void pg_map(vaddr_t src, paddr_t dst, unsigned long flags);
+
+paddr_t pg_alloc();
+
 paddr_t pg_find();
 
-#endif
+#endif	/* __PG_H__ */

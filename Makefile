@@ -15,6 +15,10 @@ all : bin/boot.iso
 test : bin/boot.iso
 	qemu-system-i386 -cdrom $^ -m $(RAM) >/dev/null 2<&1 &
 
+gdb : bin/boot.iso
+	qemu-system-i386 -cdrom $^ -m $(RAM) -gdb tcp::1234 -S &
+	gdb -s bin/boot.bin
+
 bin/%.o : $(headers)
 
 bin/%.o : src/%.c
