@@ -11,24 +11,20 @@ extern char pg_directory;
 extern char _ekern;
 
 paddr_t *pg_dir = (unsigned long *)&pg_directory;
+paddr_t phys_ptr = (paddr_t)&_ekern - KERNEL_BASE;
 vaddr_t  _prev = (vaddr_t)&_ekern;	
 
 
 void
 pg_init()
 {
-	return;
-#if 0
-	pg_dir = (unsigned long *)&pg_directory;
-	_prev = (vaddr_t)&_ekern;
-#endif
+	kprintf("phys_ptr %08X\n", phys_ptr);
 }
 
 vaddr_t
 pg_alloc()
 {
-	if (pg_find() == 0)
-
+	/* Always fails yet */
 	return 0;
 }
 
@@ -94,13 +90,17 @@ end:
 
 	/*
 	 * In case a free page isn't found we have one more
-	 * page table (1023) that wasn't looked up
+	 * page table (1023) that wasn't looked up.
+	 * If last page table isn't present, return.
 	 */
+	if (! pg_dir[1023] & PG_PRES)
+		return res;	/* `res' here is equal to 0 */
+
 	tmp = pg_dir[1022];
-	pg_dir[1022] = get_cr3() + flags;
+	pg_dir[1022] = get_cr3() | flags;
 
 	/* 1022 DIR index, 1023 TABLE index*/
-	addr = (paddr_t *)0xFFBFF000;
+	addr = (vaddr_t *)0xFFBFF000;
 	for (i = 0; i < 1024; i++) {
 		if (addr[i] & PG_PRES)
 			continue;

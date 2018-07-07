@@ -67,7 +67,7 @@ struct tss_struct {
 void segm_init();
 
 int set_gdt_entry(
-    int index, uint32_t base, uint32_t limit, uint8_t privl, uint8_t flags);
+    unsigned int index, uint32_t base, uint32_t limit, uint8_t privl, uint8_t flags);
 
 #endif
 

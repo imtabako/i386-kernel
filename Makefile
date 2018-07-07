@@ -29,6 +29,7 @@ bin/boot.bin : src/boot.s $(objects)
 
 
 bin/boot.iso : bin/boot.bin
+	mkdir -p bin
 	mkdir -p iso/boot/grub
 	cp .stage2_eltorito iso/boot/grub/stage2_eltorito
 	cp bin/boot.bin iso/boot/boot.bin
@@ -36,7 +37,6 @@ bin/boot.iso : bin/boot.bin
 	genisoimage -R -b boot/grub/stage2_eltorito -no-emul-boot -boot-load-size 4 -boot-info-table -o bin/boot.iso iso/
 
 clean : 
-	rm -f bin/boot.bin
 	rm -f $(objects)
 	rm -rf iso/
 

@@ -12,7 +12,7 @@ extern void load_gdt(struct gdtr *);
 
 int
 set_gdt_entry(index, base, limit, privl, flags)
-int index;
+unsigned int index;
 uint32_t base, limit;
 uint8_t privl, flags;
 {

@@ -237,7 +237,7 @@ do { \
 			*cp = '\0';
 
 			/* Calculate how many zeros to append to conversion, when precision specified. */
-			if (prec >= 0 && width < prec) {
+			if (prec >= 0 && width < (unsigned int)prec) {
 				nzeros = prec - width;
 				width += nzeros;
 			}
@@ -294,7 +294,7 @@ do { \
 
 				/* Fill the field to minimum width with padding character . */
 				if (minwidth >= 0) {
-					for (; width < minwidth; width++)
+					for (; width < (unsigned int)minwidth; width++)
 						PUTBUF(padchr);
 				}
 
@@ -334,13 +334,14 @@ do { \
 
 				/* Pad the field with space characters. */
 				if (minwidth >= 0) {
-					for (; width < minwidth; width++)
+					for (; width < (unsigned int)minwidth; width++)
 						PUTBUF(' ');
 				}
 			}
 
 		} else if (base == -1) {
 			size_t width, n;
+			size_t u_prec = (unsigned int)prec;
 			char *cp;
 
 			/*
@@ -350,7 +351,7 @@ do { \
 			n = strlen(cp);
 
 			if (prec >= 0)
-				width = n > prec ? prec : n;
+				width = n > u_prec ? u_prec : n;
 			else
 				width = n;
 
@@ -369,7 +370,7 @@ do { \
 				continue;
 		output_spad:
 			if (minwidth > 0) {
-				for (; width < minwidth; width++)
+				for (; width < (unsigned int)minwidth; width++)
 					PUTBUF(' ');
 			}
 

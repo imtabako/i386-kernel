@@ -109,7 +109,7 @@ vga_clear_screen()
 void
 vga_init()
 {
-	int i;
+	unsigned int i;
 
 	buffer = (void *)VGA_BUFFER_ADDR;
 
