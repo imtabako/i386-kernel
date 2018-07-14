@@ -9,7 +9,7 @@ void *memcpy(void *dst, const void *src, size_t len);
 
 void *memset(void *s, int c, size_t n);
 
-void sort(void *base, size_t nmemb, size_t size, int (*cmp)(const void *, const void *));
+void qsort(void *base, size_t nmemb, size_t size, int (*cmp)(const void *, const void *));
 
 #endif	/* __LIBC_H__ */
 

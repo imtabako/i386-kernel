@@ -12,6 +12,9 @@ headers = $(shell ls include/*.h)
 
 all : bin/boot.iso
 
+debug : CFLAGS += -DDEBUG
+debug : test
+
 test : bin/boot.iso
 	qemu-system-i386 -cdrom $^ -m $(RAM) >/dev/null 2<&1 &
 

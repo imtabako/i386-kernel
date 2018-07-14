@@ -1,7 +1,10 @@
 #include <kernel.h>
 #include <stdio.h>
 
+#include <mboot.h>
 #include <pg.h>
+
+#define	MEM_MAXLEN	6
 
 
 extern paddr_t get_cr3();
@@ -10,22 +13,74 @@ extern void upd_cr3();
 extern char pg_directory;
 extern char _ekern;
 
-paddr_t *pg_dir = (unsigned long *)&pg_directory;
-paddr_t phys_ptr = (paddr_t)&_ekern - KERNEL_BASE;
-vaddr_t  _prev = (vaddr_t)&_ekern;	
 
+paddr_t *pg_dir = (unsigned long *)&pg_directory;
+
+paddr_t phys_ptr = (paddr_t)&_ekern - KERNEL_BASE;
+
+struct mem_area memory[MEM_MAXLEN];
+int memory_len;
+int memory_idx = 0;
 
 void
 pg_init()
 {
-	kprintf("phys_ptr %08X\n", phys_ptr);
+	int i;
+
+	memory_len = mb_getmmap(memory);
+	if (memory_len < 0) {
+		kprintf("memory map not provided!\n"
+		        "Abort! Abort! Abort!\n");
+
+		while (1);
+	} 
+
+	for (i = 0; i < memory_len; i++)
+		kprintf("base: %8X\n"
+		        "end:  %8X\n", memory[i].base, memory[i].end);
+	kprintf("\n");
 }
 
 vaddr_t
 pg_alloc()
 {
-	/* Always fails yet */
-	return 0;
+	size_t i;
+	vaddr_t page;
+
+	page = pg_find();
+	if (page == 0) {
+		kprintf(" haven't found page\n"
+		        " phys pointer %8x\n", phys_ptr);
+
+		if (phys_ptr >= memory[memory_idx].end) {
+			memory_idx++;
+			if (memory_idx >= memory_len) {
+				kprintf("out of memory\n");
+				return 0;
+			}
+
+			phys_ptr = memory[memory_idx].base;
+		}
+
+		/* Find non-presented page table to allocate one. */
+		for (i = 0; i < 1024; i++) {
+			if (pg_dir[i] & PG_PRES)
+				continue;
+
+			pg_dir[i] = phys_ptr | PG_PRES | PG_RW;
+			phys_ptr += 0x1000;
+
+			return pg_alloc();
+		}
+
+		kprintf("cannot allocate page table\n");
+		return 0;
+	}
+
+	pg_map(page, phys_ptr, PG_PRES | PG_RW);
+	phys_ptr += 0x1000;
+
+	return page;
 }
 
 void
@@ -66,13 +121,18 @@ pg_find()
 	pg_dir[1023] = get_cr3() | flags;
 
 	/* Start searching for a page from last allocated page */
-	for (i = _prev >> 22; i < 1023; i++) {
+	for (i = 0; i < 1023; i++) {
 		if (! pg_dir[i] & PG_PRES)
 			continue;
 
 		addr = (vaddr_t *)(0xFFC00000 | (i << 12));
 
-		for (j = 0x3FF & (_prev >> 12); j < 1024; j++) {
+		/* 
+		 * `i' and `j' cannot be both 0 because virtual address
+		 * will be 0, which is NULL
+		 */
+		j = (i == 0) ? 1 : 0;
+		for (; j < 1024; j++) {
 			if (addr[j] & PG_PRES)
 				continue;
 
