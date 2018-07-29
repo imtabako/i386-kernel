@@ -5,7 +5,7 @@
 #include <vga.h>
 #include <mboot.h>
 #include <segm.h>
-#include <pg.h>
+#include <physpg.h>
 
 #define	VER_MAJOR	0
 #define	VER_MINOR	0
@@ -29,25 +29,6 @@ cmain(size_t magic, unsigned char *mbinfo)
 
 	mb_parse(mbinfo);
 
-	pg_init();
-
-
-	kprintf("Testing stupid page allocator:\n");
-
-	vaddr_t test, tmp;
-
-	test = pg_alloc();
-	tmp = test;
-	kprintf(" allocated %8x\n", test);
-
-	test = pg_alloc();
-	kprintf(" allocated %8x\n", test);
-
-	pg_free(tmp);
-	test = pg_alloc();
-	kprintf(" allocated %8x\n", test);
-
-	test = pg_alloc();
-	kprintf(" allocated %8x\n", test);
+	physpginit();
 }
 

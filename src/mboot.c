@@ -129,7 +129,6 @@ mb_getmmap(struct mem_area *memory)
 	while (i < idx) {
 		uint32_t areabase;
 
-		/* Merging check is too simple! */
 		areabase = memory[i].base;
 		while (i < idx-1 && 
 		    memory[i].end >= memory[i+1].end) {
