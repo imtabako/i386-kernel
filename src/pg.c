@@ -1,90 +1,30 @@
 #include <kernel.h>
 #include <stdio.h>
 
-#include <mboot.h>
+#include <physpg.h>
 #include <pg.h>
 
-#define	MEM_MAXLEN	6
-
-
-extern paddr_t get_cr3();
-extern void upd_cr3();
-
 extern char pg_directory;
-extern char _ekern;
+extern paddr_t get_cr3();
 
-
-paddr_t *pg_dir = (unsigned long *)&pg_directory;
-
-paddr_t phys_ptr = (paddr_t)&_ekern - KERNEL_BASE;
-
-struct mem_area memory[MEM_MAXLEN];
-int memory_len;
-int memory_idx = 0;
+vaddr_t *pg_dir;
 
 void
-pg_init()
+pginit()
 {
-	int i;
+	pg_dir = (vaddr_t *)&pg_directory;
 
-	memory_len = mb_getmmap(memory);
-	if (memory_len < 0) {
-		kprintf("memory map not provided!\n"
-		        "Abort! Abort! Abort!\n");
 
-		while (1);
-	} 
+	vaddr_t test;
 
-	for (i = 0; i < memory_len; i++)
-		kprintf("base: %8X\n"
-		        "end:  %8X\n", memory[i].base, memory[i].end);
-	kprintf("\n");
-}
-
-vaddr_t
-pg_alloc()
-{
-	size_t i;
-	vaddr_t page;
-
-	page = pg_find();
-	if (page == 0) {
-		kprintf(" haven't found page\n"
-		        " phys pointer %8x\n", phys_ptr);
-
-		if (phys_ptr >= memory[memory_idx].end) {
-			memory_idx++;
-			if (memory_idx >= memory_len) {
-				kprintf("out of memory\n");
-				return 0;
-			}
-
-			phys_ptr = memory[memory_idx].base;
-		}
-
-		/* Find non-presented page table to allocate one. */
-		for (i = 0; i < 1024; i++) {
-			if (pg_dir[i] & PG_PRES)
-				continue;
-
-			pg_dir[i] = phys_ptr | PG_PRES | PG_RW;
-			phys_ptr += 0x1000;
-
-			return pg_alloc();
-		}
-
-		kprintf("cannot allocate page table\n");
-		return 0;
-	}
-
-	pg_map(page, phys_ptr, PG_PRES | PG_RW);
-	phys_ptr += 0x1000;
-
-	return page;
+	do {
+		test = pgalloc();
+		kprintf("allocated %08x\n", test);
+	} while (test != 0x1000);
 }
 
 void
-pg_map(vaddr_t src, paddr_t dst, unsigned long flags)
+pgmap(vaddr_t src, paddr_t dst, unsigned long flags)
 {
 	vaddr_t *page;
 	unsigned long ind, tmp;
@@ -104,72 +44,85 @@ pg_map(vaddr_t src, paddr_t dst, unsigned long flags)
 }
 
 vaddr_t
-pg_find()
+pgfind()
 {
 	vaddr_t *addr, res;
 	unsigned long flags, tmp;
 	size_t i, j;
 
-	flags = PG_PRES | PG_RW;
 	res = 0;
+	flags = PG_PRES | PG_RW;
 
-	/*
-	 * Self-referencing trick:
-	 * temporarily map DIR[1023] to DIR itself
-	 */
+	/* Self-referencing trick! */
 	tmp = pg_dir[1023];
 	pg_dir[1023] = get_cr3() | flags;
 
-	/* Start searching for a page from last allocated page */
 	for (i = 0; i < 1023; i++) {
-		if (! pg_dir[i] & PG_PRES)
+		if (! (pg_dir[i] & PG_ALLC))
 			continue;
 
 		addr = (vaddr_t *)(0xFFC00000 | (i << 12));
 
-		/* 
-		 * `i' and `j' cannot be both 0 because virtual address
-		 * will be 0, which is NULL
-		 */
+		/* `i' and `j' cannot both be 0 because result will be 0 (NULL). */
 		j = (i == 0) ? 1 : 0;
 		for (; j < 1024; j++) {
-			if (addr[j] & PG_PRES)
+			if (addr[j] & PG_ALLC)
 				continue;
 
-			/* Result must address a page frame */
-			res = ((unsigned long)addr | (j << 2)) << 10;
+			res = ((vaddr_t)addr | j * 4) << 10;
 			goto end;
 		}
 	}
 	addr = NULL;
 
-end:
-	pg_dir[1023] = tmp;
-	if (addr)
-		return res;
-
-	/*
-	 * In case a free page isn't found we have one more
-	 * page table (1023) that wasn't looked up.
-	 * If last page table isn't present, return.
+	/* 
+	 * We are here in two cases:
+	 * 1)	there is a non-allocated page table;
+	 * 2)	all pages are mapped.
+	 * We are going to allocate a page table. If impossible, return NULL
 	 */
-	if (! pg_dir[1023] & PG_PRES)
-		return res;	/* `res' here is equal to 0 */
 
-	tmp = pg_dir[1022];
-	pg_dir[1022] = get_cr3() | flags;
-
-	/* 1022 DIR index, 1023 TABLE index*/
-	addr = (vaddr_t *)0xFFBFF000;
-	for (i = 0; i < 1024; i++) {
-		if (addr[i] & PG_PRES)
-			continue;
-
-		res = ((paddr_t)addr | (i << 2)) << 10;
-		break;
+	for (i = 0; i < 1023; i++) {
+		if (! (pg_dir[i] & PG_ALLC))
+			break;
 	}
 
-	pg_dir[1022] = tmp;
+	/* All page tables are allocated and full. */
+	if (i == 1023)
+		return 0;
+
+	addr = (vaddr_t *)(0xFFFFF000 | i);
+	kprintf(">> %x\n", addr);
+	*addr = physpgalloc() | flags | PG_ALLC;
+	kprintf(">> %x\n", addr);
+
+	pg_dir[1023] = tmp;
+	return pgfind();
+
+end:
+	pg_dir[1023] = tmp;
 	return res;
+}
+
+vaddr_t
+pgalloc()
+{
+	vaddr_t page;
+	paddr_t addr;
+
+	addr = physpgalloc();
+	page = pgfind();
+
+	kprintf("> %x %x\n", addr, page);
+
+	if (page == 0) {
+		kprintf("cannot map %08x\n", addr);
+		physpgfree(addr);
+		return 0;
+	}
+
+	pgmap(page, addr, PG_PRES | PG_RW | PG_ALLC);
+
+	return page;
 }
 

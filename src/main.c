@@ -30,5 +30,7 @@ cmain(size_t magic, unsigned char *mbinfo)
 	mb_parse(mbinfo);
 
 	physpginit();
+	kprintf("\n");
+	pginit();
 }
 

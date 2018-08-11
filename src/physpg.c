@@ -29,11 +29,12 @@ physpginit()
 	}
 	kprintf("%d pages (%x)\n", i, i);
 
+
+#if 0
 	kprintf("Testing...\n\n");
 
 	while (physpgalloc() != 0x400000)
 		;
-
 	test = physpgalloc();	kprintf("allocated %X\n", test);
 	test = physpgalloc();	kprintf("allocated %X\n", test);
 	physpgfree(test);	kprintf("freed %X\n", test);
@@ -77,6 +78,7 @@ physpginit()
 	test = physpgalloc();	kprintf("allocated %X\n", test);
 
 	kprintf("\ndone\n");
+#endif
 }
 
 paddr_t

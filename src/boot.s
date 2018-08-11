@@ -13,6 +13,8 @@
 .set	KERNEL_PAGE,	KERNEL_BASE>>22
 .set	KERNEL_STACK,	0x4000
 
+.set	PAGE_FLAGS,	((1 << 0) | (1 << 1) | (1 << 9))
+
 .section .bss
 stack_down:
 .align	16
@@ -49,9 +51,9 @@ _start:
 	mov	$(_first_table - KERNEL_BASE), %ecx
 	xor	%edi, %edi
 1:
-	mov	%edi, %edx	# index
-	shl	$12, %edx	# multiply by 4096
-	or	$3, %edx	# flags
+	mov	%edi, %edx		# index
+	shl	$12, %edx		# multiply by 4096
+	or	$(PAGE_FLAGS), %edx	# flags
 	mov	%edx, (%ecx, %edi, 4)
 
 	mov	$(_ekern), %edx
@@ -69,7 +71,7 @@ _start:
 
 	mov	$(KERNEL_PAGE), %edx
 	movl	$(_first_table - KERNEL_BASE), (%ecx, %edx, 4)
-	orl	$3, (%ecx, %edx, 4)
+	orl	$(PAGE_FLAGS), (%ecx, %edx, 4)
 
 	mov	%ecx, %cr3
 	mov	%cr0, %ecx

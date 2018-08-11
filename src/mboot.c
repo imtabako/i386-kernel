@@ -6,6 +6,7 @@
 
 #include <mboot.h>
 
+#define	MEM_MAXLEN	6
 
 uint32_t *mb_ptr;
 uint32_t mb_flags;
